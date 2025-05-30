@@ -26,7 +26,13 @@ import {
   Hash,
   Users,
   FileText,
-  CheckCircle
+  CheckCircle,
+  History,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  Trash2,
+  ArrowRight
 } from 'lucide-react';
 
 interface ContentHelperProps {
@@ -52,6 +58,17 @@ interface TransformationOption {
   description: string;
 }
 
+interface HistoryItem {
+  id: string;
+  timestamp: number;
+  originalText: string;
+  transformedText: string;
+  transformationType: string;
+  contentType: string;
+  transformationLabel: string;
+  contentTypeLabel: string;
+}
+
 const ContentHelper: React.FC<ContentHelperProps> = ({
   currentText: initialText = '',
   onTextUpdate = () => {},
@@ -63,7 +80,85 @@ const ContentHelper: React.FC<ContentHelperProps> = ({
   const [suggestions, setSuggestions] = useState<{[key: string]: string}>({});
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyLimit] = useState(20); // Limite d'éléments dans l'historique
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Charger l'historique depuis localStorage au montage
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('contenthelper-history');
+    if (savedHistory) {
+      try {
+        const parsedHistory = JSON.parse(savedHistory);
+        setHistory(parsedHistory);
+      } catch (error) {
+        console.error('Error loading history:', error);
+      }
+    }
+  }, []);
+
+  // Sauvegarder l'historique dans localStorage à chaque modification
+  useEffect(() => {
+    localStorage.setItem('contenthelper-history', JSON.stringify(history));
+  }, [history]);
+
+  // Fonction pour ajouter un élément à l'historique
+  const addToHistory = (
+    originalText: string,
+    transformedText: string,
+    transformationType: string,
+    transformationLabel: string
+  ) => {
+    const contentType = contentTypes.find(ct => ct.id === selectedContentType);
+    const newHistoryItem: HistoryItem = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      originalText,
+      transformedText,
+      transformationType,
+      contentType: selectedContentType,
+      transformationLabel,
+      contentTypeLabel: contentType?.label || 'General'
+    };
+
+    setHistory(prev => {
+      const newHistory = [newHistoryItem, ...prev];
+      // Limiter le nombre d'éléments dans l'historique
+      return newHistory.slice(0, historyLimit);
+    });
+  };
+
+  // Fonction pour supprimer un élément de l'historique
+  const removeFromHistory = (id: string) => {
+    setHistory(prev => prev.filter(item => item.id !== id));
+  };
+
+  // Fonction pour vider tout l'historique
+  const clearHistory = () => {
+    setHistory([]);
+  };
+
+  // Fonction pour formater la date
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor(diffInHours * 60);
+      return diffInMinutes < 1 ? 'À l\'instant' : `Il y a ${diffInMinutes}min`;
+    } else if (diffInHours < 24) {
+      return `Il y a ${Math.floor(diffInHours)}h`;
+    } else {
+      return date.toLocaleDateString('fr-FR', { 
+        day: '2-digit', 
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  };
 
   // Auto-resize textarea
   const adjustTextareaHeight = () => {
@@ -371,6 +466,9 @@ Important rules:
         ...prev,
         [option.id]: transformed
       }));
+      
+      // Ajouter à l'historique
+      addToHistory(currentText, transformed, option.id, option.label);
     } catch (err: any) {
       console.error('Transformation Error:', err);
       setError(err.message || 'Error during transformation');
@@ -392,6 +490,11 @@ Important rules:
       const correctedText = await callOpenAI('Fix ONLY spelling errors, typos, and basic grammar mistakes in this text. Do NOT change any words, do NOT rephrase anything, do NOT change the meaning or style. Keep the exact same vocabulary and sentence structure. Only correct obvious spelling mistakes and punctuation errors. If a word is spelled correctly but you think there might be a "better" word, do NOT change it.');
       setCurrentText(correctedText);
       onTextUpdate(correctedText);
+      
+      // Ajouter à l'historique si le texte a été modifié
+      if (correctedText !== currentText) {
+        addToHistory(currentText, correctedText, 'correction', 'Correction');
+      }
     } catch (err: any) {
       console.error('Correction Error:', err);
       setError(err.message || 'Error during correction');
@@ -438,26 +541,187 @@ Important rules:
           .scrollbar-hide::-webkit-scrollbar {
             display: none;
           }
+          .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
         `
       }} />
       <div className="max-w-6xl mx-auto">
         
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-3">
-            <div className="p-3 bg-gradient-to-r from-violet-500 to-purple-600 rounded-xl shadow-lg">
-              <Sparkles className="h-6 w-6 text-white" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-gradient-to-r from-violet-500 to-purple-600 rounded-xl shadow-lg">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                  AI Content Creation Helper
+                </h1>
+                <p className="text-sm text-slate-600 mt-1">
+                  ✨ Transform your content with artificial intelligence
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                AI Content Creation Helper
-              </h1>
-              <p className="text-sm text-slate-600 mt-1">
-                ✨ Transform your content with artificial intelligence
-              </p>
-            </div>
+            
+            {/* Bouton d'historique */}
+            <Button
+              variant="outline"
+              onClick={() => setShowHistory(!showHistory)}
+              className="h-10 px-4 bg-white/60 border-violet-200 hover:bg-violet-50 hover:border-violet-300 rounded-xl transition-all duration-200"
+            >
+              <History className="h-4 w-4 mr-2 text-violet-600" />
+              <span className="text-violet-700 font-medium">Historique</span>
+              {history.length > 0 && (
+                <Badge className="ml-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white border-0 text-xs">
+                  {history.length}
+                </Badge>
+              )}
+              {showHistory ? (
+                <ChevronUp className="h-4 w-4 ml-2 text-violet-600" />
+              ) : (
+                <ChevronDown className="h-4 w-4 ml-2 text-violet-600" />
+              )}
+            </Button>
           </div>
         </div>
+
+        {/* Section Historique */}
+        {showHistory && (
+          <Card className="mb-6 border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center space-x-2 text-slate-800">
+                  <div className="p-2 bg-gradient-to-r from-amber-500 to-orange-500 rounded-lg">
+                    <Clock className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-lg">Historique des transformations</span>
+                </CardTitle>
+                {history.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearHistory}
+                    className="h-8 px-3 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Vider
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            
+            <CardContent>
+              {history.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="p-4 bg-gradient-to-r from-slate-100 to-slate-200 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <History className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <p className="text-slate-500 text-sm">Aucune transformation dans l'historique</p>
+                  <p className="text-slate-400 text-xs mt-1">Vos transformations apparaîtront ici</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto scrollbar-hide">
+                  {history.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="border border-slate-200 rounded-xl p-4 bg-white/60 backdrop-blur-sm hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-2">
+                            <Badge className="text-xs bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0">
+                              {item.transformationLabel}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs border-slate-300 text-slate-600">
+                              {item.contentTypeLabel}
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-slate-500">
+                            {formatDate(item.timestamp)}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFromHistory(item.id)}
+                          className="h-6 w-6 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {/* Texte original */}
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-slate-600 flex items-center space-x-1">
+                            <span>Texte original</span>
+                          </label>
+                          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">
+                              {item.originalText}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Flèche de transformation */}
+                        <div className="flex justify-center">
+                          <div className="p-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full">
+                            <ArrowRight className="h-3 w-3 text-white" />
+                          </div>
+                        </div>
+                        
+                        {/* Texte transformé */}
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-slate-600 flex items-center space-x-1">
+                            <span>Résultat</span>
+                          </label>
+                          <div className="p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
+                            <p className="text-sm text-slate-700 leading-relaxed line-clamp-3 mb-3">
+                              {item.transformedText}
+                            </p>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="text-xs border-emerald-200 text-emerald-700">
+                                {item.transformedText.length} caractères
+                              </Badge>
+                              <div className="flex space-x-2 ml-auto">
+                                <Button
+                                  onClick={() => handleUseText(item.transformedText)}
+                                  size="sm"
+                                  className="flex-1 h-7 px-3 text-xs bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 border-0 rounded-lg"
+                                >
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Utiliser
+                                </Button>
+                                <Button
+                                  onClick={() => handleCopy(item.transformedText, `history-${item.id}`)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 h-7 px-2 border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300 rounded-lg"
+                                >
+                                  {copied === `history-${item.id}` ? (
+                                    <Check className="h-3 w-3 text-green-600" />
+                                  ) : (
+                                    <Copy className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="mb-6 border-0 shadow-xl bg-white/80 backdrop-blur-sm">
           <CardHeader className="pb-4">
@@ -705,7 +969,7 @@ Important rules:
         {/* Footer */}
         <div className="text-center">
           <p className="text-xs text-slate-500">
-            💜 Open Source • Powered by AI
+            💜 Open Source by <a href="https://github.com/zkerkeb" className="text-violet-600 hover:text-violet-700">Zakaria K.</a> • Powered by AI
           </p>
         </div>
 
