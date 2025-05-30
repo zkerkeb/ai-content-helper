@@ -283,7 +283,7 @@ Important rules:
 - Return ONLY the transformed text, without explanations, without prefixes, without quotes
 - Never start with "Improved message:", "Here is", "Transformed text:" or any other prefix
 - Return directly the final content
-- ALWAYS write the response in English regardless of the input language`;
+- ALWAYS respond in the same language as the input text`;
 
     const userMessage = `Original text: "${currentText}"\n\nTask: ${fullPrompt}`;
 
