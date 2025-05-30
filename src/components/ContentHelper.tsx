@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,6 +63,20 @@ const ContentHelper: React.FC<ContentHelperProps> = ({
   const [suggestions, setSuggestions] = useState<{[key: string]: string}>({});
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.max(140, textarea.scrollHeight) + 'px';
+    }
+  };
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [currentText]);
 
   // Content types/platforms
   const contentTypes: ContentType[] = [
@@ -540,9 +554,13 @@ Important rules:
               
               <Textarea
                 value={currentText}
-                onChange={(e) => setCurrentText(e.target.value)}
+                onChange={(e) => {
+                  setCurrentText(e.target.value);
+                  setTimeout(adjustTextareaHeight, 0);
+                }}
                 placeholder="✍️ Write or paste your text here..."
-                className="min-h-[140px] text-sm resize-none border-violet-200 focus:border-violet-400 focus:ring-violet-400 rounded-xl bg-white/60 backdrop-blur-sm"
+                className="min-h-[140px] text-sm resize-none border-violet-200 focus:border-violet-400 focus:ring-violet-400 rounded-xl bg-white/60 backdrop-blur-sm overflow-hidden"
+                ref={textareaRef}
               />
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
