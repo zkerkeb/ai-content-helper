@@ -37,14 +37,27 @@ A modern, open-source React web application that helps you improve, reformulate,
    yarn install
    ```
 
-3. **Start the development server**
+3. **Configure environment variables**
+   ```bash
+   # Create a .env file based on .env.example
+   cp .env.example .env
+   ```
+   
+   Then edit the `.env` file and add your OpenAI API key:
+   ```
+   VITE_OPENAI_API_KEY=your_actual_openai_api_key_here
+   ```
+   
+   > ⚠️ **Important**: You need an OpenAI API key to use the AI features. Get one at [OpenAI Platform](https://platform.openai.com/api-keys)
+
+4. **Start the development server**
    ```bash
    npm run dev
    # or
    yarn dev
    ```
 
-4. **Open your browser**
+5. **Open your browser**
    
    Go to [http://localhost:5173](http://localhost:5173) to see the application.
 
