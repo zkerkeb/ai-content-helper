@@ -123,8 +123,8 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 If you encounter issues or have questions:
 
-1. Check [existing issues](https://github.com/[your-username]/ai-content-helper/issues)
-2. Create a [new issue](https://github.com/[your-username]/ai-content-helper/issues/new) if needed
+1. Check [existing issues](https://github.com/zkerkeb/ai-content-helper/issues)
+2. Create a [new issue](https://github.com/zkerkeb/ai-content-helper/issues/new) if needed
 3. Consult the documentation for the technologies used
 
 ## 🔗 Useful Links
